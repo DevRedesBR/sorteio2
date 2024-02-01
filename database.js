@@ -1,10 +1,8 @@
-const db = async function (q, params) {
-  console.log("Parametro -> " + params);
-  require("pg");
-  require("dotenv").config();
-  const { Client } = require("pg");
+require("dotenv").config();
+const { Client } = require("pg");
 
-  var client = new Client({
+async function db(q, params) {
+  const client = new Client({
     user: process.env.USERNAME_DATABASE,
     host: process.env.DATABASE_HOST,
     database: process.env.DATABASE_NAME,
@@ -12,18 +10,16 @@ const db = async function (q, params) {
     port: process.env.DATABASE_PORT,
   });
 
-  await client.connect();
-  let res;
-  let result;
-  if (params) {
-    res = await client.query(q, params);
-    result = res.rows;
-  } else {
-    res = await client.query(q);
+  try {
+    await client.connect();
+    const res = params ? await client.query(q, params) : await client.query(q);
+    return res.rows;
+  } catch (error) {
+    console.error('Error executing query', error.stack);
+    throw error;
+  } finally {
+    await client.end();
   }
-  let jsonData = await res.rows;
-  await client.end();
-  return jsonData;
-};
+}
 
 module.exports = db;

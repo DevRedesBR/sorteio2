@@ -1,20 +1,39 @@
 require('dotenv').config();
-const database = require('./database'); // Se database for uma função ou objeto, ajuste conforme necessário
+const database = require('./database'); 
 const express = require("express");
+const helmet = require("helmet");
 const app = express();
 
 app.use(express.json());
+app.use(helmet());
 
 app.get('/database/:h', async (req, res, next) => {
-    console.log("Param url ->  "+ req.params.h);
-    let q = "SELECT * from lead WHERE key_hash = $1";
-    let params = [req.params.h.toString()];
-    console.log("Params array-> "+params);
-    let result = await database(q,params); // Ajuste o uso de acordo com a exportação do seu módulo de banco de dados
-    res.json({result:true});
-    console.log(result);
+    try {
+        const hashParam = req.params.h.toString();
+        if (!hashParam) {
+            return res.status(404).json({ error: "Inválido" });
+        }
+        
+        let q = "SELECT * from lead WHERE key_hash = $1";
+        let params = [hashParam];
+        let result = await database(q, params);
+        
+        if (result.length > 0) {
+            res.status(200).json({ result: true, data: result });
+        } else {
+            res.status(401).json({ result: false });
+        }
+    } catch (error) {
+        next(error);
+    }
 });
 
-app.listen(process.env.PORT_SERVER, function(){
-    console.log("Server started on port -> " + process.env.PORT_SERVER);
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
+});
+
+const PORT = process.env.PORT_SERVER || 3000;
+app.listen(PORT, function() {
+    console.log(`Server started on port ${PORT}`);
 });
